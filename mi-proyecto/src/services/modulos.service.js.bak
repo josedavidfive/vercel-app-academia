@@ -8,45 +8,19 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { db } from "../config/firebase";
-import { getProfesorById } from "./profesores.service";
-
-export async function getModulos(profesorId, profesorEmail = "") {
-  const modulosRef = collection(db, "modulos");
-  const snapshot = await getDocs(modulosRef);
-  const modulos = snapshot.docs
+export async function getModulos() {
+  const snapshot = await getDocs(collection(db, "modulos"));
+  return snapshot.docs
     .map((moduloDoc) => ({
       id: moduloDoc.id,
       ...moduloDoc.data(),
-    }));
-
-  if (!profesorId) {
-    return modulos.sort(compararOrden);
-  }
-
-  const perfil = await getProfesorById(profesorId, profesorEmail);
-  const identificadoresProfesor = new Set(
-    [profesorId, perfil?.id, perfil?.uid].filter(Boolean),
-  );
-
-  return modulos
-    .filter((modulo) => {
-      const referencia = modulo.profesor_id;
-      if (!referencia) return false;
-      if (typeof referencia === "string") {
-        return identificadoresProfesor.has(referencia)
-          || identificadoresProfesor.has(referencia.split("/").pop());
-      }
-      return identificadoresProfesor.has(referencia.id)
-        || identificadoresProfesor.has(referencia.path?.split("/").pop());
-    })
-    .sort(compararOrden);
-}
-
-function compararOrden(a, b) {
-  if (a.orden === undefined && b.orden === undefined) return 0;
-  if (a.orden === undefined) return 1;
-  if (b.orden === undefined) return -1;
-  return Number(a.orden) - Number(b.orden);
+    }))
+    .sort((a, b) => {
+      if (a.orden === undefined && b.orden === undefined) return 0;
+      if (a.orden === undefined) return 1;
+      if (b.orden === undefined) return -1;
+      return Number(a.orden) - Number(b.orden);
+    });
 }
 export async function getModuloById(id) {
   if (!id) return null;
@@ -63,7 +37,6 @@ export async function createModulo(data) {
   const reference = await addDoc(collection(db, "modulos"), {
     nombre,
     horas,
-    profesor_id: data.profesorId || "",
     lecciones_id: [],
   });
   return reference.id;
@@ -83,17 +56,12 @@ export async function updateModulo(id, data) {
     }
     changes.horas = horas;
   }
+
+  if (data.estado !== undefined) changes.estado = data.estado;
+
+
   await updateDoc(doc(db, "modulos", id), changes);
 }
-
-export async function setModuloActivo(id, activo) {
-  if (!id) throw new Error("Falta el ID del módulo.");
-
-  await updateDoc(doc(db, "modulos", id), {
-    estado: activo ? "activo" : "bloqueado",
-  });
-}
-
 export async function deleteModulo(id) {
   const moduleRef = doc(db, "modulos", id);
   const snapshot = await getDoc(moduleRef);
@@ -106,6 +74,41 @@ export async function deleteModulo(id) {
 }
 
 export async function getModulosByPromocionActivos(promocionRef) {
+  const promocionSnap = await getDoc(promocionRef);
+  if (!promocionSnap.exists()) return [];
+
+  const data = promocionSnap.data();
+  let modulosRefs = [];
+
+  // Estructura antigua: promocion.modulo = [{modulo_id, isActive}]
+  if (data.modulo && Array.isArray(data.modulo) && data.modulo.length > 0) {
+    modulosRefs = data.modulo
+      .filter(m => m.modulo_id || m.modulos_id)
+      .map(m => m.modulo_id || m.modulos_id);
+
+    // Estructura nueva: va por campus_id
+  } else if (data.campus_id) {
+    const campusRef = Array.isArray(data.campus_id)
+      ? data.campus_id[0]
+      : data.campus_id;
+    if (!campusRef) return [];
+
+    const campusSnap = await getDoc(campusRef);
+    if (!campusSnap.exists()) return [];
+
+    modulosRefs = campusSnap.data().modulos || [];
+  }
+
+  if (modulosRefs.length === 0) return [];
+
+  const modulos = await Promise.all(modulosRefs.map(ref => getDoc(ref)));
+
+  return modulos
+    .filter(s => s.exists() && s.data().estado === "activo")
+    .map(s => ({ id: s.id, ...s.data() }));
+}
+
+export async function getModulosByPromocionTodos(promocionRef) {
   const promocionSnap = await getDoc(promocionRef);
   if (!promocionSnap.exists()) return [];
 
@@ -127,8 +130,33 @@ export async function getModulosByPromocionActivos(promocionRef) {
   if (modulosRefs.length === 0) return [];
 
   const modulos = await Promise.all(modulosRefs.map(ref => getDoc(ref)));
+  return modulos
+    .filter(s => s.exists())
+    .map(s => ({ id: s.id, ...s.data() }));
+}
+
+// Deprecated
+export async function getModulosByPromocion(promocionRef) {
+  const promocionSnap = await getDoc(promocionRef);
+  if (!promocionSnap.exists()) return [];
+
+  const data = promocionSnap.data();
+  console.log("Promocion data completa:", data);
+  console.log("Campo modulo:", data.modulo);
+
+  const moduloMaps = data.modulo || [];
+  console.log("moduloMaps length:", moduloMaps.length);
+  console.log("primer map:", moduloMaps[0]);
+
+  const modulos = await Promise.all(
+    moduloMaps
+      .filter(m => m.modulo_id)
+      .map(m => getDoc(m.modulo_id))
+  );
+
+  console.log("modulos resueltos:", modulos.map(s => ({ exists: s.exists(), id: s.id })));
 
   return modulos
-    .filter(s => s.exists() && s.data().estado === "activo")
+    .filter(s => s.exists())
     .map(s => ({ id: s.id, ...s.data() }));
 }

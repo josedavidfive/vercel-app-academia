@@ -3,6 +3,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  limit,
   query,
   where,
 } from "firebase/firestore";
@@ -16,7 +17,7 @@ const obtenerIdReferencia = (referencia) => {
   return referencia?.id || referencia?.path?.split("/").pop() || null;
 };
 
-export const getProfesorById = async (uid) => {
+export const getProfesorById = async (uid, email = "") => {
   if (!uid) {
     throw new Error("El UID del profesor es obligatorio.");
   }
@@ -24,14 +25,36 @@ export const getProfesorById = async (uid) => {
   const profesorRef = doc(db, "profesores", uid);
   const profesorSnap = await getDoc(profesorRef);
 
-  if (!profesorSnap.exists()) {
-    return null;
+  if (profesorSnap.exists()) {
+    return {
+      id: profesorSnap.id,
+      ...profesorSnap.data(),
+    };
   }
 
-  return {
-    id: profesorSnap.id,
-    ...profesorSnap.data(),
-  };
+  const consultas = [
+    query(collection(db, "profesores"), where("uid", "==", uid), limit(1)),
+  ];
+
+  if (email) {
+    consultas.push(
+      query(
+        collection(db, "profesores"),
+        where("email", "==", email.trim().toLowerCase()),
+        limit(1),
+      ),
+    );
+  }
+
+  for (const consulta of consultas) {
+    const resultado = await getDocs(consulta);
+    if (!resultado.empty) {
+      const documento = resultado.docs[0];
+      return { id: documento.id, ...documento.data() };
+    }
+  }
+
+  return null;
 };
 
 export const getProfesoresByCampus = async (campus) => {

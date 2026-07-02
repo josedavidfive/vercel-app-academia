@@ -11,7 +11,7 @@ const LINKS = [
   { to: "/admin/inscripciones", label: "Inscripciones" },
   { to: "/admin/profesores", label: "Profesores" },
   { to: "/admin/promociones", label: "Promociones" },
-  { to: "/admin/modulos", label: "Módulos" },
+  // { to: "/admin/modulos", label: "Módulos" },
   { to: "/admin/campus", label: "Campus" },
 ];
 
