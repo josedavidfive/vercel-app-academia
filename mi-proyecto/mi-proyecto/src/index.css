@@ -1,0 +1,83 @@
+@import "tailwindcss";
+
+/* ================================
+   AprenTIC Design System
+   ================================ */
+
+@theme {
+  /* Tipografía */
+  --font-sans: "Montserrat", ui-sans-serif, system-ui, sans-serif;
+
+  /* Colores principales */
+  --color-brand-red: #e53935;
+  --color-brand-red-dark: #c62828;
+
+  /* Fondos */
+  --color-brand-background: #0f172a;
+  --color-brand-surface: #111827;
+  --color-brand-surface-light: #172033;
+  --color-brand-border: #1f2937;
+
+  /* Colores tecnológicos */
+  --color-brand-cyan: #06b6d4;
+  --color-brand-purple: #7c3aed;
+
+  /* Estados */
+  --color-brand-success: #22c55e;
+  --color-brand-warning: #f59e0b;
+  --color-brand-error: #ef4444;
+
+  /* Texto */
+  --color-brand-text: #f8fafc;
+  --color-brand-muted: #94a3b8;
+}
+
+/* ================================
+   Estilos globales
+   ================================ */
+
+:root {
+  font-family: "Montserrat", sans-serif;
+  color: #f8fafc;
+  background-color: #0f172a;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 320px;
+  min-height: 100%;
+  background-color: #0f172a;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  background-color: #0f172a;
+  color: #f8fafc;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
